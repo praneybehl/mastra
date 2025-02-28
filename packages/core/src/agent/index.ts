@@ -13,6 +13,7 @@ import type {
   UserContent,
 } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
+import { jsonSchemaToZod } from 'json-schema-to-zod';
 import type { ZodSchema } from 'zod';
 import { z } from 'zod';
 
@@ -27,7 +28,8 @@ import { RegisteredLogger } from '../logger';
 import type { MastraMemory } from '../memory/memory';
 import type { MemoryConfig, StorageThreadType } from '../memory/types';
 import { InstrumentClass } from '../telemetry';
-import type { CoreTool, ToolAction } from '../tools/types';
+import type { CoreTool, ToolAction, VercelTool } from '../tools/types';
+import { resolveSerializedZodOutput } from '../utils';
 import type { CompositeVoice } from '../voice';
 
 import type { AgentConfig, AgentGenerateOptions, AgentStreamOptions, ToolsetsInput } from './types';
@@ -478,35 +480,25 @@ export class Agent<
         const tool = this.tools[k];
 
         if (tool) {
-          memo[k] = {
-            description: tool.description,
-            parameters: tool.inputSchema,
-            execute:
-              typeof tool?.execute === 'function'
-                ? async (args, options) => {
+          if ('type' in tool && tool.type === 'function') {
+            const vercelTool = tool as VercelTool;
+            memo[vercelTool.function.name] = {
+              description: vercelTool.function.description,
+              parameters: resolveSerializedZodOutput(jsonSchemaToZod(vercelTool.function.parameters)),
+              execute: vercelTool.exec
+                ? async args => {
                     try {
-                      this.logger.debug(`[Agent:${this.name}] - Executing tool ${k}`, {
-                        name: k,
-                        description: tool.description,
+                      this.logger.debug(`[Agent:${this.name}] - Executing Vercel tool ${vercelTool.function.name}`, {
+                        name: vercelTool.function.name,
+                        description: vercelTool.function.description,
                         args,
                         runId,
                         threadId,
                         resourceId,
                       });
-                      return (
-                        tool?.execute?.(
-                          {
-                            context: args,
-                            mastra: this.#mastra,
-                            runId,
-                            threadId,
-                            resourceId,
-                          },
-                          options,
-                        ) ?? undefined
-                      );
+                      return await vercelTool.exec!(args);
                     } catch (err) {
-                      this.logger.error(`[Agent:${this.name}] - Failed execution`, {
+                      this.logger.error(`[Agent:${this.name}] - Failed Vercel tool execution`, {
                         error: err,
                         runId,
                         threadId,
@@ -516,7 +508,48 @@ export class Agent<
                     }
                   }
                 : undefined,
-          };
+            };
+          } else {
+            memo[k] = {
+              description: tool.description,
+              parameters: tool.inputSchema,
+              execute:
+                typeof tool?.execute === 'function'
+                  ? async (args, options) => {
+                      try {
+                        this.logger.debug(`[Agent:${this.name}] - Executing tool ${k}`, {
+                          name: k,
+                          description: tool.description,
+                          args,
+                          runId,
+                          threadId,
+                          resourceId,
+                        });
+                        return (
+                          tool?.execute?.(
+                            {
+                              context: args,
+                              mastra: this.#mastra,
+                              runId,
+                              threadId,
+                              resourceId,
+                            },
+                            options,
+                          ) ?? undefined
+                        );
+                      } catch (err) {
+                        this.logger.error(`[Agent:${this.name}] - Failed execution`, {
+                          error: err,
+                          runId,
+                          threadId,
+                          resourceId,
+                        });
+                        throw err;
+                      }
+                    }
+                  : undefined,
+            };
+          }
         }
         return memo;
       },
