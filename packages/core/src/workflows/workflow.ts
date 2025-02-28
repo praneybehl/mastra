@@ -15,6 +15,7 @@ import type {
   StepGraph,
   StepNode,
   StepVariableType,
+  WorkflowContext,
   WorkflowOptions,
   WorkflowRunState,
 } from './types';
@@ -157,6 +158,116 @@ export class Workflow<
       // add the step to the graph
       this.#stepGraph[lastStepKey].push(graphEntry);
     }
+
+    return this;
+  }
+
+  until<
+    FallbackStep extends IAction<any, any, any, any>,
+    CondStep extends StepVariableType<any, any, any, any>,
+    VarStep extends StepVariableType<any, any, any, any>,
+  >(condition: StepConfig<FallbackStep, CondStep, VarStep, TTriggerSchema>['when'], fallbackStep: FallbackStep) {
+    const lastStepKey = this.#lastStepStack[this.#lastStepStack.length - 1];
+    // If no last step, we can't do anything
+    if (!lastStepKey) return this;
+
+    const fallbackStepKey = this.#makeStepKey(fallbackStep);
+
+    // Store the fallback step
+    this.#steps[fallbackStepKey] = fallbackStep;
+
+    // Map of operators to their negations for inverting the condition
+    const negateOperator = {
+      $eq: '$ne',
+      $ne: '$eq',
+      $gt: '$lte',
+      $gte: '$lt',
+      $lt: '$gte',
+      $lte: '$gt',
+      $in: '$nin',
+      $nin: '$in',
+    } as const;
+
+    const negateQuery = (query: Record<string, any>) => {
+      const operators = Object.keys(query);
+      if (operators.length === 0) return query;
+
+      const operator = operators[0];
+      if (operator && operator.startsWith('$')) {
+        const negatedOp = negateOperator[operator as keyof typeof negateOperator];
+        return { [negatedOp]: query[operator] };
+      }
+      return query;
+    };
+
+    // Create a check step that evaluates the condition
+    const checkStepKey = `__${fallbackStepKey}_check`;
+    const checkStep = {
+      id: checkStepKey,
+      execute: async ({ context }: any) => {
+        if (typeof condition === 'function') {
+          const result = await condition({ context });
+          return { status: result ? 'complete' : 'continue' };
+        }
+
+        // For query-based conditions, we need to:
+        // 1. Get the actual value from the reference
+        // 2. Compare it with the query
+        if (condition && 'ref' in condition) {
+          const { ref, query } = condition;
+          // Handle both string IDs and step objects with IDs
+          const stepId = typeof ref.step === 'string' ? ref.step : 'id' in ref.step ? ref.step.id : null;
+          if (!stepId) {
+            return { status: 'continue' }; // If we can't get the step ID, continue looping
+          }
+
+          const stepOutput = context.steps?.[stepId]?.output;
+          if (!stepOutput) {
+            return { status: 'continue' }; // If we can't find the value, continue looping
+          }
+
+          // Get the value at the specified path
+          const value = ref.path.split('.').reduce((obj, key) => obj?.[key], stepOutput);
+
+          // Compare the value with the query
+          const operator = Object.keys(query)[0] as keyof typeof query;
+          const target = query[operator];
+
+          switch (operator) {
+            case '$eq':
+              return { status: value === target ? 'complete' : 'continue' };
+            case '$ne':
+              return { status: value !== target ? 'complete' : 'continue' };
+            case '$gt':
+              return { status: value > target ? 'complete' : 'continue' };
+            case '$gte':
+              return { status: value >= target ? 'complete' : 'continue' };
+            case '$lt':
+              return { status: value < target ? 'complete' : 'continue' };
+            case '$lte':
+              return { status: value <= target ? 'complete' : 'continue' };
+            default:
+              return { status: 'continue' };
+          }
+        }
+
+        return { status: 'continue' };
+      },
+    };
+    this.#steps[checkStepKey] = checkStep;
+
+    // First add the check step after the last step
+    this.then(checkStep);
+
+    // Then create a branch after the check step that loops back to the fallback step
+    this.after(checkStep)
+      .step(fallbackStep, {
+        when: {
+          ref: { step: { id: checkStepKey }, path: 'status' },
+          query: { $eq: 'continue' }, // Execute fallback when check returns 'continue' (condition not met)
+        },
+      })
+      .then(checkStep);
 
     return this;
   }

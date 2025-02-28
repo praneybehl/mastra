@@ -374,6 +374,7 @@ export class Machine<
           if (stepConfig?.snapshotOnTimeout) {
             return { type: 'SUSPENDED' as const, stepId: stepNode.step.id };
           }
+          console.log('no attempts');
           return { type: 'CONDITION_FAILED' as const, error: `Step:${stepNode.step.id} condition check failed` };
         }
 
@@ -411,18 +412,21 @@ export class Machine<
             return { type: 'CONDITIONS_MET' as const };
           }
           if (!attemptCount || attemptCount < 0) {
+            console.log('attempts exhausted');
             return { type: 'CONDITION_FAILED' as const, error: `Step:${stepNode.step.id} condition check failed` };
           }
           return { type: 'WAITING' as const, stepId: stepNode.step.id };
         } else {
           const conditionMet = this.#evaluateCondition(stepConfig.when, context);
           if (!conditionMet) {
+            console.log('condition not met');
             return {
               type: 'CONDITION_FAILED' as const,
               error: `Step:${stepNode.step.id} condition check failed`,
             };
           }
         }
+        console.log('condition met');
         return { type: 'CONDITIONS_MET' as const };
       }),
       spawnSubscriberFunction: fromPromise(
