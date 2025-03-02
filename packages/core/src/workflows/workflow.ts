@@ -15,14 +15,13 @@ import type {
   StepGraph,
   StepNode,
   StepVariableType,
-  WorkflowContext,
   WorkflowOptions,
   WorkflowRunState,
 } from './types';
 import { isVariableReference, updateStepInHierarchy } from './utils';
 import { WorkflowInstance } from './workflow-instance';
 import type { WorkflowResultReturn } from './workflow-instance';
-
+import { WhenConditionReturnValue } from './types';
 export class Workflow<
   TSteps extends Step<any, any, any>[] = any,
   TTriggerSchema extends z.ZodType<any> = any,
@@ -227,9 +226,14 @@ export class Workflow<
     // Then create a branch after the check step that loops back to the fallback step
     this.after(checkStep)
       .step(fallbackStep, {
-        when: {
-          ref: { step: { id: checkStepKey }, path: 'status' },
-          query: { $eq: 'continue' }, // Execute fallback when check returns 'continue' (condition not met)
+        when: async ({ context }) => {
+          const checkStepResult = context.steps?.[checkStepKey];
+          if (checkStepResult?.status !== 'success') {
+            return WhenConditionReturnValue.ABORT;
+          }
+
+          const status = checkStepResult?.output?.status;
+          return status === 'continue' ? WhenConditionReturnValue.CONTINUE : WhenConditionReturnValue.CONTINUE_FAILED;
         },
       })
       .then(checkStep);
