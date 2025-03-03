@@ -114,37 +114,139 @@ export class RecursiveJsonTransformer {
     data,
     currentPath = [],
     chunks = [{}],
+    depth = 0,
+    maxDepth = 100,
   }: {
     data: Record<string, any>;
     currentPath?: string[];
     chunks?: Record<string, any>[];
+    depth?: number;
+    maxDepth?: number;
   }): Record<string, any>[] {
-    if (data && typeof data === 'object' && !Array.isArray(data)) {
-      for (const [key, value] of Object.entries(data)) {
-        const newPath = [...currentPath, key];
-        const chunkSize = RecursiveJsonTransformer.jsonSize(chunks[chunks.length - 1] || {});
-        const size = RecursiveJsonTransformer.jsonSize({ [key]: value });
-        const remaining = this.maxSize - chunkSize;
+    if (!data || typeof data !== 'object') {
+      return chunks;
+    }
 
-        if (size < remaining) {
-          // Add item to current chunk
-          RecursiveJsonTransformer.setNestedDict(chunks[chunks.length - 1] || {}, newPath, value);
-        } else {
-          if (chunkSize >= this.minSize) {
-            // Chunk is big enough, start a new chunk
-            chunks.push({});
+    if (depth > maxDepth) {
+      console.warn(`Maximum depth of ${maxDepth} exceeded, flattening remaining structure`);
+      RecursiveJsonTransformer.setNestedDict(chunks[chunks.length - 1] || {}, currentPath, data);
+      return chunks;
+    }
+
+    for (const [key, value] of Object.entries(data)) {
+      const currentChunk = chunks[chunks.length - 1] || {};
+
+      if (typeof value === 'object') {
+        // Handle nested objects
+        let currentNestedChunk = {};
+
+        // Try to group fields together
+        for (const [nestedKey, nestedValue] of Object.entries(value)) {
+          if (typeof nestedValue === 'object') {
+            // Recursively handle deeper nested structures
+            const subChunks = this.jsonSplit({
+              data: { [nestedKey]: nestedValue },
+              currentPath: [...currentPath, key],
+              chunks: [{}],
+              depth: depth + 1,
+              maxDepth,
+            });
+            chunks.push(...subChunks);
+            continue;
           }
-          // Iterate
-          this.jsonSplit({
-            data: typeof value === 'object' ? value : { [key]: value },
-            currentPath: newPath,
-            chunks,
+
+          // Try adding the field to current nested chunk
+          const testChunk = { ...currentNestedChunk, [nestedKey]: nestedValue };
+          const testSize = RecursiveJsonTransformer.jsonSize({ [key]: testChunk });
+
+          if (testSize <= this.maxSize) {
+            // Field fits, add it to current nested chunk
+            currentNestedChunk = testChunk;
+          } else {
+            // Field doesn't fit, save current chunk and start new one
+            if (Object.keys(currentNestedChunk).length > 0) {
+              const newChunk = {};
+              RecursiveJsonTransformer.setNestedDict(newChunk, [key], currentNestedChunk);
+              chunks.push(newChunk);
+              currentNestedChunk = {};
+            }
+
+            // Handle the current field
+            if (
+              typeof nestedValue === 'string' &&
+              RecursiveJsonTransformer.jsonSize({ [nestedKey]: nestedValue }) > this.maxSize
+            ) {
+              // Split long strings
+              const stringChunks = this.splitLongString(nestedKey, nestedValue);
+              stringChunks.forEach(chunk => {
+                const splitChunk = {};
+                RecursiveJsonTransformer.setNestedDict(splitChunk, [key], { [nestedKey]: chunk });
+                chunks.push(splitChunk);
+              });
+            } else {
+              currentNestedChunk = { [nestedKey]: nestedValue };
+            }
+          }
+        }
+
+        // Add any remaining nested data
+        if (Object.keys(currentNestedChunk).length > 0) {
+          const newChunk = {};
+          RecursiveJsonTransformer.setNestedDict(newChunk, [key], currentNestedChunk);
+          chunks.push(newChunk);
+        }
+      } else {
+        // Handle primitive values
+        const valueSize = RecursiveJsonTransformer.jsonSize({ [key]: value });
+        if (valueSize > this.maxSize && typeof value === 'string') {
+          // Split long strings
+          const stringChunks = this.splitLongString(key, value);
+          stringChunks.forEach(chunk => {
+            const newChunk = {};
+            RecursiveJsonTransformer.setNestedDict(newChunk, currentPath, { [key]: chunk });
+            chunks.push(newChunk);
           });
+        } else {
+          // Try to add to current chunk
+          const totalSize = RecursiveJsonTransformer.jsonSize({
+            ...currentChunk,
+            [key]: value,
+          });
+
+          if (totalSize <= this.maxSize) {
+            RecursiveJsonTransformer.setNestedDict(currentChunk, [key], value);
+          } else {
+            const newChunk = {};
+            RecursiveJsonTransformer.setNestedDict(newChunk, currentPath, { [key]: value });
+            chunks.push(newChunk);
+          }
         }
       }
-    } else {
-      RecursiveJsonTransformer.setNestedDict(chunks[chunks.length - 1] || {}, currentPath, data);
     }
+
+    return chunks.filter(chunk => Object.keys(chunk).length > 0);
+  }
+
+  private splitLongString(key: string, value: string): string[] {
+    const chunks: string[] = [];
+    let remaining = value;
+
+    while (remaining.length > 0) {
+      const overhead = JSON.stringify({ [key]: '' }).length - 2;
+      let chunkSize = this.maxSize - overhead;
+
+      let chunk = remaining.slice(0, chunkSize);
+      if (remaining.length > chunkSize) {
+        const lastSpace = chunk.lastIndexOf(' ');
+        if (lastSpace > chunkSize * 0.7) {
+          chunk = chunk.slice(0, lastSpace);
+        }
+      }
+
+      chunks.push(chunk);
+      remaining = remaining.slice(chunk.length).trim();
+    }
+
     return chunks;
   }
 
