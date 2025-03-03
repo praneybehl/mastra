@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ZodObject } from 'zod';
 import type { MastraPrimitives } from './action';
 import type { Logger } from './logger';
+import type { MastraMemory } from './memory';
 import type { CoreTool, ToolAction, VercelTool } from './tools';
 
 export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -93,7 +94,7 @@ export function jsonSchemaToModel(jsonSchema: Record<string, any>): ZodObject<an
     if (requiredFields.includes(key)) {
       zodSchema[key] = zodType;
     } else {
-      zodSchema[key] = zodType.nullable();
+      zodSchema[key] = zodType.nullable().optional();
     }
   }
 
@@ -296,9 +297,10 @@ export function convertToolToCore(
     resourceId?: string;
     mastra?: MastraPrimitives;
     logger: Logger;
+    memory?: MastraMemory;
   },
 ): CoreTool {
-  const { name, runId, threadId, resourceId, mastra, logger } = options;
+  const { name, runId, threadId, resourceId, mastra, logger, memory } = options;
 
   if (isVercelTool(tool)) {
     return {
@@ -348,6 +350,7 @@ export function convertToolToCore(
                     threadId,
                     resourceId,
                     mastra,
+                    memory,
                     runId,
                   },
                   options,

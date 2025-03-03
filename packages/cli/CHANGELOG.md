@@ -1,5 +1,67 @@
 # mastra
 
+## 0.2.9-alpha.3
+
+### Patch Changes
+
+- Updated dependencies [3d0e290]
+  - @mastra/core@0.5.0-alpha.3
+  - @mastra/deployer@0.1.8-alpha.3
+
+## 0.2.9-alpha.2
+
+### Patch Changes
+
+- Updated dependencies [02ffb7b]
+  - @mastra/core@0.5.0-alpha.2
+  - @mastra/deployer@0.1.8-alpha.2
+
+## 0.2.9-alpha.1
+
+### Patch Changes
+
+- e5149bb: Fix playground-ui agent-evals tab-content
+- Updated dependencies [dab255b]
+  - @mastra/core@0.5.0-alpha.1
+  - @mastra/deployer@0.1.8-alpha.1
+
+## 0.2.9-alpha.0
+
+### Patch Changes
+
+- 5fae49e: Configurable timeout on npm create mastra
+- 960690d: Improve client-js workflow watch dx
+- 62565c1: --no-timeout npm create mastra flag
+- Updated dependencies [59df7b6]
+- Updated dependencies [29f3a82]
+- Updated dependencies [59df7b6]
+- Updated dependencies [c2dde91]
+- Updated dependencies [731dd8a]
+- Updated dependencies [960690d]
+- Updated dependencies [c139344]
+  - @mastra/core@0.5.0-alpha.0
+  - @mastra/deployer@0.1.8-alpha.0
+
+## 0.2.8
+
+### Patch Changes
+
+- Updated dependencies [1da20e7]
+- Updated dependencies [30a4c29]
+- Updated dependencies [e1e2705]
+  - @mastra/core@0.4.4
+  - @mastra/deployer@0.1.7
+
+## 0.2.8-alpha.0
+
+### Patch Changes
+
+- Updated dependencies [1da20e7]
+- Updated dependencies [30a4c29]
+- Updated dependencies [e1e2705]
+  - @mastra/core@0.4.4-alpha.0
+  - @mastra/deployer@0.1.7-alpha.0
+
 ## 0.2.7
 
 ### Patch Changes

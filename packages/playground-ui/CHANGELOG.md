@@ -1,5 +1,58 @@
 # @mastra/playground-ui
 
+## 1.0.0-alpha.3
+
+### Patch Changes
+
+- Updated dependencies [3d0e290]
+  - @mastra/core@0.5.0-alpha.3
+  - @mastra/client-js@0.1.7-alpha.3
+
+## 1.0.0-alpha.2
+
+### Patch Changes
+
+- Updated dependencies [02ffb7b]
+  - @mastra/core@0.5.0-alpha.2
+  - @mastra/client-js@0.1.7-alpha.2
+
+## 1.0.0-alpha.1
+
+### Patch Changes
+
+- e5149bb: Fix playground-ui agent-evals tab-content
+- Updated dependencies [dab255b]
+  - @mastra/core@0.5.0-alpha.1
+  - @mastra/client-js@0.1.7-alpha.1
+
+## 1.0.0-alpha.0
+
+### Patch Changes
+
+- Updated dependencies [59df7b6]
+- Updated dependencies [29f3a82]
+- Updated dependencies [960690d]
+- Updated dependencies [59df7b6]
+- Updated dependencies [c139344]
+  - @mastra/core@0.5.0-alpha.0
+  - @mastra/client-js@0.1.7-alpha.0
+
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies [1da20e7]
+  - @mastra/core@0.4.4
+  - @mastra/client-js@0.1.6
+
+## 0.0.2-alpha.0
+
+### Patch Changes
+
+- Updated dependencies [1da20e7]
+  - @mastra/core@0.4.4-alpha.0
+  - @mastra/client-js@0.1.6-alpha.0
+
 ## 0.0.1
 
 ### Patch Changes

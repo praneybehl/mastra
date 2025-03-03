@@ -1,5 +1,57 @@
 # @mastra/deployer
 
+## 0.1.8-alpha.3
+
+### Patch Changes
+
+- Updated dependencies [3d0e290]
+  - @mastra/core@0.5.0-alpha.3
+
+## 0.1.8-alpha.2
+
+### Patch Changes
+
+- Updated dependencies [02ffb7b]
+  - @mastra/core@0.5.0-alpha.2
+
+## 0.1.8-alpha.1
+
+### Patch Changes
+
+- Updated dependencies [dab255b]
+  - @mastra/core@0.5.0-alpha.1
+
+## 0.1.8-alpha.0
+
+### Patch Changes
+
+- c2dde91: Return full workflow details in api/workflows endpoint
+- 731dd8a: Removed useless logging that showed up when user selected log drains tab on the playground
+- 960690d: return runId from server on workflow watch
+- Updated dependencies [59df7b6]
+- Updated dependencies [29f3a82]
+- Updated dependencies [59df7b6]
+- Updated dependencies [c139344]
+  - @mastra/core@0.5.0-alpha.0
+
+## 0.1.7
+
+### Patch Changes
+
+- 30a4c29: fix mastra build errors related to esbuild not removing types
+- e1e2705: Added --ignore-workspace when installing dependencies in mastra build with pnpm package manager
+- Updated dependencies [1da20e7]
+  - @mastra/core@0.4.4
+
+## 0.1.7-alpha.0
+
+### Patch Changes
+
+- 30a4c29: fix mastra build errors related to esbuild not removing types
+- e1e2705: Added --ignore-workspace when installing dependencies in mastra build with pnpm package manager
+- Updated dependencies [1da20e7]
+  - @mastra/core@0.4.4-alpha.0
+
 ## 0.1.6
 
 ### Patch Changes
