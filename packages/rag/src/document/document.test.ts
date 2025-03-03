@@ -705,6 +705,184 @@ describe('MDocument', () => {
         expect(combined.key2).toBe('世界');
       });
     });
+
+    describe('JSON structure handling', () => {
+      it('should handle flat objects', async () => {
+        const flatJson = {
+          name: 'John',
+          age: 30,
+          email: 'john@example.com',
+        };
+
+        const doc = MDocument.fromJSON(JSON.stringify(flatJson), { meta: 'data' });
+        await doc.chunk({
+          strategy: 'json',
+          maxSize: 50,
+          minSize: 10,
+        });
+
+        const chunks = doc.getText();
+        expect(chunks.length).toBeGreaterThan(0);
+
+        // Verify all data is preserved
+        const reconstructed = chunks.map(chunk => JSON.parse(chunk)).reduce((acc, curr) => ({ ...acc, ...curr }), {});
+        expect(reconstructed).toEqual(flatJson);
+      });
+
+      it('should handle nested objects', async () => {
+        const nestedJson = {
+          user: {
+            name: 'John',
+            contact: {
+              email: 'john@example.com',
+              phone: '123-456-7890',
+            },
+          },
+        };
+
+        const doc = MDocument.fromJSON(JSON.stringify(nestedJson), { meta: 'data' });
+        await doc.chunk({
+          strategy: 'json',
+          maxSize: 50,
+          minSize: 10,
+        });
+
+        const chunks = doc.getText();
+        expect(chunks.length).toBeGreaterThan(0);
+
+        // Verify nested structure is maintained
+        chunks.forEach(chunk => {
+          const parsed = JSON.parse(chunk);
+          expect(parsed).toHaveProperty('user');
+        });
+      });
+
+      it('should handle arrays of objects', async () => {
+        const arrayJson = [
+          { id: 1, value: 'first' },
+          { id: 2, value: 'second' },
+        ];
+
+        const doc = MDocument.fromJSON(JSON.stringify(arrayJson), { meta: 'data' });
+        await doc.chunk({
+          strategy: 'json',
+          maxSize: 50,
+          minSize: 10,
+        });
+
+        const chunks = doc.getText();
+        expect(chunks.length).toBe(2);
+        chunks.forEach((chunk, index) => {
+          const parsed = JSON.parse(chunk);
+          expect(parsed[index]).toEqual(arrayJson[index]);
+        });
+      });
+
+      it('should handle deeply nested objects', async () => {
+        const deepJson = {
+          level1: {
+            level2: {
+              level3: {
+                level4: {
+                  value: 'deep',
+                },
+              },
+            },
+          },
+        };
+
+        const doc = MDocument.fromJSON(JSON.stringify(deepJson), { meta: 'data' });
+        await doc.chunk({
+          strategy: 'json',
+          maxSize: 100,
+          minSize: 10,
+        });
+
+        const chunks = doc.getText();
+        chunks.forEach(chunk => {
+          const parsed = JSON.parse(chunk);
+          expect(parsed).toHaveProperty('level1');
+        });
+      });
+
+      it('should handle mixed types', async () => {
+        const mixedJson = {
+          string: 'hello',
+          number: 123,
+          boolean: true,
+          array: [1, 2, 3],
+          object: {
+            nested: 'value',
+          },
+        };
+
+        const doc = MDocument.fromJSON(JSON.stringify(mixedJson), { meta: 'data' });
+        await doc.chunk({
+          strategy: 'json',
+          maxSize: 50,
+          minSize: 10,
+        });
+
+        const chunks = doc.getText();
+        const reconstructed = chunks.map(chunk => JSON.parse(chunk)).reduce((acc, curr) => ({ ...acc, ...curr }), {});
+
+        expect(reconstructed).toEqual(mixedJson);
+      });
+
+      it('should properly split long string values', async () => {
+        const longStringJson = {
+          title: 'Short title',
+          description:
+            'This is a very long description that should definitely exceed our maxSize limit of 128 characters. It contains multiple sentences and should be split into multiple chunks while maintaining proper structure.',
+        };
+
+        const doc = MDocument.fromJSON(JSON.stringify(longStringJson), { meta: 'data' });
+        await doc.chunk({
+          strategy: 'json',
+          maxSize: 50,
+          minSize: 10,
+        });
+
+        const chunks = doc.getText();
+
+        // Verify the short field is kept intact
+        expect(
+          chunks.some(chunk => {
+            const parsed = JSON.parse(chunk);
+            return parsed.title === 'Short title';
+          }),
+        ).toBe(true);
+
+        // Verify the long field is split
+        const descriptionChunks = chunks
+          .map(chunk => JSON.parse(chunk))
+          .filter(parsed => parsed.description)
+          .map(parsed => parsed.description);
+
+        expect(descriptionChunks.length).toBeGreaterThan(1);
+        expect(descriptionChunks.join('')).toBe(longStringJson.description);
+      });
+
+      it('should respect maxSize in all chunks', async () => {
+        const doc = MDocument.fromJSON(
+          JSON.stringify({
+            key: 'x'.repeat(200), // Deliberately exceed maxSize
+          }),
+          { meta: 'data' },
+        );
+
+        await doc.chunk({
+          strategy: 'json',
+          maxSize: 50,
+          minSize: 10,
+        });
+
+        const chunks = doc.getText();
+        chunks.forEach(chunk => {
+          expect(chunk.length).toBeLessThanOrEqual(50);
+        });
+      });
+    });
   });
 
   describe('chunkToken', () => {
