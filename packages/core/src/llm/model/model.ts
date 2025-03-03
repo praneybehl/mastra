@@ -16,7 +16,7 @@ import type {
 import type { MastraPrimitives } from '../../action';
 import type { ToolsInput } from '../../agent/types';
 import type { CoreTool } from '../../tools';
-import { delay } from '../../utils';
+import { convertToolToCore, delay, isVercelTool, resolveSerializedZodOutput } from '../../utils';
 
 import { MastraLLMBase } from './base';
 
@@ -74,43 +74,14 @@ export class MastraLLM extends MastraLLMBase {
         const tool = value[1];
 
         if (tool) {
-          memo[k] = {
-            description: tool.description!,
-            parameters: tool.inputSchema,
-            execute:
-              typeof tool?.execute === 'function'
-                ? async (props, options) => {
-                    try {
-                      this.logger.debug('Executing tool', {
-                        tool: k,
-                        props,
-                      });
-                      return (
-                        tool?.execute?.(
-                          {
-                            context: props,
-                            threadId,
-                            resourceId,
-                            mastra: this.#mastra,
-                            runId,
-                          },
-                          options,
-                        ) ?? undefined
-                      );
-                    } catch (error) {
-                      this.logger.error('Error executing tool', {
-                        tool: k,
-                        props,
-                        error,
-                        runId,
-                        threadId,
-                        resourceId,
-                      });
-                      throw error;
-                    }
-                  }
-                : undefined,
-          };
+          memo[k] = convertToolToCore(tool, {
+            name: k,
+            runId,
+            threadId,
+            resourceId,
+            mastra: this.#mastra,
+            logger: this.logger,
+          });
         }
         return memo;
       },

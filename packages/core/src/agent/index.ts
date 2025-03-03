@@ -28,11 +28,11 @@ import { RegisteredLogger } from '../logger';
 import type { MastraMemory } from '../memory/memory';
 import type { MemoryConfig, StorageThreadType } from '../memory/types';
 import { InstrumentClass } from '../telemetry';
-import type { CoreTool, ToolAction, VercelTool } from '../tools/types';
-import { resolveSerializedZodOutput } from '../utils';
+import type { CoreTool } from '../tools/types';
+import { isVercelTool, resolveSerializedZodOutput } from '../utils';
 import type { CompositeVoice } from '../voice';
 
-import type { AgentConfig, AgentGenerateOptions, AgentStreamOptions, ToolsetsInput } from './types';
+import type { AgentConfig, AgentGenerateOptions, AgentStreamOptions, ToolsetsInput, ToolsInput } from './types';
 
 export * from './types';
 
@@ -41,7 +41,7 @@ export * from './types';
   excludeMethods: ['__setTools', '__setLogger', '__setTelemetry', 'log'],
 })
 export class Agent<
-  TTools extends Record<string, ToolAction<any, any, any, any>> = Record<string, ToolAction<any, any, any, any>>,
+  TTools extends ToolsInput = ToolsInput,
   TMetrics extends Record<string, Metric> = Record<string, Metric>,
 > extends MastraBase {
   public name: string;
@@ -480,23 +480,22 @@ export class Agent<
         const tool = this.tools[k];
 
         if (tool) {
-          if ('type' in tool && tool.type === 'function') {
-            const vercelTool = tool as VercelTool;
-            memo[vercelTool.function.name] = {
-              description: vercelTool.function.description,
-              parameters: resolveSerializedZodOutput(jsonSchemaToZod(vercelTool.function.parameters)),
-              execute: vercelTool.exec
+          if (isVercelTool(tool)) {
+            memo[tool.function.name] = {
+              description: tool.function.description,
+              parameters: resolveSerializedZodOutput(jsonSchemaToZod(tool.function.parameters)),
+              execute: tool.exec
                 ? async args => {
                     try {
-                      this.logger.debug(`[Agent:${this.name}] - Executing Vercel tool ${vercelTool.function.name}`, {
-                        name: vercelTool.function.name,
-                        description: vercelTool.function.description,
+                      this.logger.debug(`[Agent:${this.name}] - Executing Vercel tool ${tool.function.name}`, {
+                        name: tool.function.name,
+                        description: tool.function.description,
                         args,
                         runId,
                         threadId,
                         resourceId,
                       });
-                      return await vercelTool.exec!(args);
+                      return await tool.exec!(args);
                     } catch (err) {
                       this.logger.error(`[Agent:${this.name}] - Failed Vercel tool execution`, {
                         error: err,
@@ -569,44 +568,74 @@ export class Agent<
       toolsFromToolsets.forEach(toolset => {
         Object.entries(toolset).forEach(([toolName, tool]) => {
           const toolObj = tool;
-          toolsFromToolsetsConverted[toolName] = {
-            description: toolObj.description || '',
-            parameters: toolObj.inputSchema,
-            execute:
-              typeof toolObj?.execute === 'function'
-                ? async (args, options) => {
+          if (isVercelTool(toolObj)) {
+            toolsFromToolsetsConverted[toolName] = {
+              description: toolObj.function.description,
+              parameters: resolveSerializedZodOutput(jsonSchemaToZod(toolObj.function.parameters)),
+              execute: toolObj.exec
+                ? async args => {
                     try {
-                      this.logger.debug(`[Agent:${this.name}] - Executing tool ${toolName}`, {
+                      this.logger.debug(`[Agent:${this.name}] - Executing Vercel tool ${toolName}`, {
                         name: toolName,
-                        description: toolObj.description,
+                        description: toolObj.function.description,
                         args,
                         runId,
                         threadId,
                         resourceId,
                       });
-                      return (
-                        toolObj?.execute?.(
-                          {
-                            context: args,
-                            runId,
-                            threadId,
-                            resourceId,
-                          },
-                          options,
-                        ) ?? undefined
-                      );
-                    } catch (error) {
-                      this.logger.error(`[Agent:${this.name}] - Failed toolset execution`, {
-                        error,
+                      return await toolObj.exec!(args);
+                    } catch (err) {
+                      this.logger.error(`[Agent:${this.name}] - Failed Vercel tool execution`, {
+                        error: err,
                         runId,
                         threadId,
                         resourceId,
                       });
-                      throw error;
+                      throw err;
                     }
                   }
                 : undefined,
-          };
+            };
+          } else {
+            toolsFromToolsetsConverted[toolName] = {
+              description: toolObj.description || '',
+              parameters: toolObj.inputSchema,
+              execute:
+                typeof toolObj?.execute === 'function'
+                  ? async (args, options) => {
+                      try {
+                        this.logger.debug(`[Agent:${this.name}] - Executing tool ${toolName}`, {
+                          name: toolName,
+                          description: toolObj.description,
+                          args,
+                          runId,
+                          threadId,
+                          resourceId,
+                        });
+                        return (
+                          toolObj?.execute?.(
+                            {
+                              context: args,
+                              runId,
+                              threadId,
+                              resourceId,
+                            },
+                            options,
+                          ) ?? undefined
+                        );
+                      } catch (error) {
+                        this.logger.error(`[Agent:${this.name}] - Failed toolset execution`, {
+                          error,
+                          runId,
+                          threadId,
+                          resourceId,
+                        });
+                        throw error;
+                      }
+                    }
+                  : undefined,
+            };
+          }
         });
       });
     }

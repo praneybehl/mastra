@@ -1,5 +1,9 @@
+import jsonSchemaToZod from 'json-schema-to-zod';
 import { z } from 'zod';
 import type { ZodObject } from 'zod';
+import type { MastraPrimitives } from './action';
+import type { Logger } from './logger';
+import type { CoreTool, ToolAction, VercelTool } from './tools';
 
 export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -266,4 +270,101 @@ export async function* maskStreamTags(
  */
 export function resolveSerializedZodOutput(obj: any) {
   return Function('z', `"use strict";return (${obj});`)(z);
+}
+
+export function isVercelTool(tool: any): tool is VercelTool {
+  return (
+    typeof tool === 'object' &&
+    tool !== null &&
+    'type' in tool &&
+    tool.type === 'function' &&
+    'function' in tool &&
+    typeof tool.function === 'object' &&
+    tool.function !== null &&
+    'name' in tool.function &&
+    'description' in tool.function &&
+    'parameters' in tool.function
+  );
+}
+
+export function convertToolToCore(
+  tool: ToolAction<any, any, any, any> | VercelTool,
+  options: {
+    name: string;
+    runId?: string;
+    threadId?: string;
+    resourceId?: string;
+    mastra?: MastraPrimitives;
+    logger: Logger;
+  },
+): CoreTool {
+  const { name, runId, threadId, resourceId, mastra, logger } = options;
+
+  if (isVercelTool(tool)) {
+    return {
+      description: tool.function.description,
+      parameters: resolveSerializedZodOutput(jsonSchemaToZod(tool.function.parameters)),
+      execute: tool.exec
+        ? async args => {
+            try {
+              logger.debug(`Executing Vercel tool ${tool.function.name}`, {
+                name: tool.function.name,
+                description: tool.function.description,
+                args,
+                runId,
+                threadId,
+                resourceId,
+              });
+              return await tool.exec!(args);
+            } catch (err) {
+              logger.error(`Failed Vercel tool execution`, {
+                error: err,
+                runId,
+                threadId,
+                resourceId,
+              });
+              throw err;
+            }
+          }
+        : undefined,
+    };
+  }
+
+  return {
+    description: tool.description!,
+    parameters: tool.inputSchema,
+    execute:
+      typeof tool?.execute === 'function'
+        ? async (args, options) => {
+            try {
+              logger.debug('Executing tool', {
+                tool: name,
+                args,
+              });
+              return (
+                tool?.execute?.(
+                  {
+                    context: args,
+                    threadId,
+                    resourceId,
+                    mastra,
+                    runId,
+                  },
+                  options,
+                ) ?? undefined
+              );
+            } catch (error) {
+              logger.error('Error executing tool', {
+                tool: name,
+                args,
+                error,
+                runId,
+                threadId,
+                resourceId,
+              });
+              throw error;
+            }
+          }
+        : undefined,
+  };
 }
