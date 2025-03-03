@@ -1,11 +1,12 @@
 import { setTimeout } from 'node:timers/promises';
-import { trace, context as otlpContext } from '@opentelemetry/api';
 import type { Span } from '@opentelemetry/api';
+import { context as otlpContext, trace } from '@opentelemetry/api';
 import type { z } from 'zod';
 
-import type { IAction, MastraPrimitives } from '../action';
+import type { IAction } from '../action';
 import { MastraBase } from '../base';
 
+import type { Mastra } from '../mastra';
 import type { Step } from './step';
 import type {
   ActionContext,
@@ -19,9 +20,8 @@ import type {
   WorkflowRunState,
 } from './types';
 import { isVariableReference, updateStepInHierarchy } from './utils';
-import { WorkflowInstance } from './workflow-instance';
 import type { WorkflowResultReturn } from './workflow-instance';
-
+import { WorkflowInstance } from './workflow-instance';
 export class Workflow<
   TSteps extends Step<any, any, any>[] = any,
   TTriggerSchema extends z.ZodType<any> = any,
@@ -29,7 +29,7 @@ export class Workflow<
   name: string;
   triggerSchema?: TTriggerSchema;
   #retryConfig?: RetryConfig;
-  #mastra?: MastraPrimitives;
+  #mastra?: Mastra;
   #runs: Map<string, WorkflowInstance<TSteps, TTriggerSchema>> = new Map();
 
   // registers stepIds on `after` calls
@@ -51,7 +51,6 @@ export class Workflow<
     this.name = name;
     this.#retryConfig = retryConfig;
     this.triggerSchema = triggerSchema;
-    this.#mastra = mastra;
 
     if (mastra?.logger) {
       this.logger = mastra?.logger;
@@ -292,7 +291,7 @@ export class Workflow<
       };
 
       // Only trace if telemetry is available and action exists
-      const finalAction = this.#mastra?.telemetry
+      const finalAction = this.#mastra?.getTelemetry()
         ? executeStep(execute, `workflow.${this.name}.action.${stepId}`, {
             componentName: this.name,
             runId: rest.runId as string,
@@ -513,16 +512,9 @@ export class Workflow<
       stepId,
     });
   }
-  __registerPrimitives(p: MastraPrimitives) {
-    if (p.telemetry) {
-      this.__setTelemetry(p.telemetry);
-    }
 
-    if (p.logger) {
-      this.__setLogger(p.logger);
-    }
-
-    this.#mastra = p;
+  __registerMastra(mastra: Mastra) {
+    this.#mastra = mastra;
   }
 
   get stepGraph() {

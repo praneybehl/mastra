@@ -2,13 +2,14 @@ import EventEmitter from 'node:events';
 import type { Span } from '@opentelemetry/api';
 import { get } from 'radash';
 import sift from 'sift';
-import { assign, createActor, fromPromise, setup } from 'xstate';
 import type { MachineContext, Snapshot } from 'xstate';
+import { assign, createActor, fromPromise, setup } from 'xstate';
 import type { z } from 'zod';
 
-import type { IAction, MastraPrimitives } from '../action';
+import type { IAction } from '../action';
 import type { Logger } from '../logger';
 
+import type { Mastra } from '../mastra';
 import type { Step } from './step';
 import type {
   DependencyCheckOutput,
@@ -43,7 +44,7 @@ export class Machine<
   TTriggerSchema extends z.ZodType<any> = any,
 > extends EventEmitter {
   logger: Logger;
-  #mastra?: MastraPrimitives;
+  #mastra?: Mastra;
   #workflowInstance: WorkflowInstance;
   #executionSpan?: Span | undefined;
 
@@ -70,7 +71,7 @@ export class Machine<
     startStepId,
   }: {
     logger: Logger;
-    mastra?: MastraPrimitives;
+    mastra?: Mastra;
     workflowInstance: WorkflowInstance;
     executionSpan?: Span;
     name: string;

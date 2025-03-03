@@ -2,6 +2,7 @@ import type { z } from 'zod';
 
 import type { Agent } from '../agent';
 import type { Logger } from '../logger';
+import type { Mastra } from '../mastra';
 import type { MastraMemory } from '../memory';
 import type { MastraStorage } from '../storage';
 import type { Telemetry } from '../telemetry';
@@ -24,7 +25,7 @@ export interface IExecutionContext<
 > {
   context: TSchemaIn extends z.ZodSchema ? z.infer<TSchemaIn> & TContext : TContext;
   runId?: string;
-  mastra?: MastraPrimitives;
+  mastra?: Mastra;
   threadId?: string;
   resourceId?: string;
   suspend: () => Promise<void>;
@@ -40,7 +41,7 @@ export interface IAction<
   description?: string;
   inputSchema?: TSchemaIn;
   outputSchema?: TSchemaOut;
-  mastra?: MastraPrimitives;
+  mastra?: Mastra;
   payload?: TSchemaIn extends z.ZodSchema ? Partial<z.infer<TSchemaIn>> : unknown;
   execute?: (
     context: TContext,

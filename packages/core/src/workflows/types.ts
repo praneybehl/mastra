@@ -3,6 +3,7 @@ import type { z } from 'zod';
 
 import type { IAction, IExecutionContext, MastraPrimitives } from '../action';
 import type { BaseLogMessage, RegisteredLogger } from '../logger';
+import type { Mastra } from '../mastra';
 
 export interface WorkflowOptions<TTriggerSchema extends z.ZodType<any> = any> {
   name: string;
@@ -99,7 +100,7 @@ export type StepDef<
   TStepId,
   {
     snapshotOnTimeout?: boolean;
-    when?: Condition<any, any> | ((args: { context: WorkflowContext; mastra?: MastraPrimitives }) => Promise<boolean>);
+    when?: Condition<any, any> | ((args: { context: WorkflowContext; mastra?: Mastra }) => Promise<boolean>);
     data: TSchemaIn;
     handler: (args: ActionContext<TSchemaIn>) => Promise<z.infer<TSchemaOut>>;
   }
@@ -126,7 +127,7 @@ export interface StepConfig<
   snapshotOnTimeout?: boolean;
   when?:
     | Condition<CondStep, TTriggerSchema>
-    | ((args: { context: WorkflowContext<TTriggerSchema>; mastra?: MastraPrimitives }) => Promise<boolean>);
+    | ((args: { context: WorkflowContext<TTriggerSchema>; mastra?: Mastra }) => Promise<boolean>);
   variables?: StepInputType<TStep, 'inputSchema'> extends never
     ? Record<string, VariableReference<VarStep, TTriggerSchema>>
     : {

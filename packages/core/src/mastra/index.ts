@@ -219,15 +219,7 @@ This is a warning for now, but will throw an error in the future
 
     if (config?.workflows) {
       Object.entries(config.workflows).forEach(([key, workflow]) => {
-        workflow.__registerPrimitives({
-          logger: this.getLogger(),
-          telemetry: this.telemetry,
-          storage: this.storage,
-          memory: this.memory,
-          agents: this.agents,
-          tts: this.tts,
-          vectors: this.vectors,
-        });
+        workflow.__registerMastra(this);
 
         // @ts-ignore
         this.workflows[key] = workflow;
@@ -305,12 +297,6 @@ This is a warning for now, but will throw an error in the future
       });
     }
 
-    if (this.workflows) {
-      Object.keys(this.workflows).forEach(key => {
-        this.workflows?.[key]?.__setLogger(this.logger);
-      });
-    }
-
     if (this.memory) {
       this.memory.__setLogger(this.logger);
     }
@@ -343,14 +329,6 @@ This is a warning for now, but will throw an error in the future
       Object.keys(this.agents).forEach(key => {
         if (this.telemetry) {
           this.agents?.[key]?.__setTelemetry(this.telemetry);
-        }
-      });
-    }
-
-    if (this.workflows) {
-      Object.keys(this.workflows).forEach(key => {
-        if (this.telemetry) {
-          this.workflows?.[key]?.__setTelemetry(this.telemetry);
         }
       });
     }
