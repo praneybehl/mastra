@@ -693,7 +693,7 @@ describe('Workflow', async () => {
         .step(incrementStep)
         .until(async ({ context }) => {
           const res = context.getStepResult<{ newValue: number }>('increment');
-          return (res?.newValue ?? 0) >= 10;
+          return (res?.newValue ?? 0) >= 12;
         }, incrementStep)
         .then(finalStep)
         .commit();
@@ -701,12 +701,12 @@ describe('Workflow', async () => {
       const run = counterWorkflow.createRun();
       const { results } = await run.start({ triggerData: { target: 10, startValue: 0 } });
 
-      expect(increment).toHaveBeenCalledTimes(10);
+      expect(increment).toHaveBeenCalledTimes(12);
       expect(final).toHaveBeenCalledTimes(1);
       // @ts-ignore
-      expect(results.final.output).toEqual({ finalValue: 10 });
+      expect(results.final.output).toEqual({ finalValue: 12 });
       // @ts-ignore
-      expect(results.increment.output).toEqual({ newValue: 10 });
+      expect(results.increment.output).toEqual({ newValue: 12 });
     });
 
     it('should run a while loop', async () => {
