@@ -108,7 +108,7 @@ export class McpConfiguration {
 		this.parseConfig(config, server)
 
 		// Add default arguments from server configuration
-		const runtimeConfig = server.config?.find(
+		const runtimeConfig = server.schemas?.find(
 			(c) => c.command === config.command,
 		)
 		const configWithDefaults = {
@@ -152,10 +152,10 @@ export class McpConfiguration {
 			...existing,
 			config: {
 				...input.config,
-				args: serverDef.config?.find((c) => c.command === input.config.command)
+				args: serverDef.schemas?.find((c) => c.command === input.config.command)
 					?.args
 					? [
-							...serverDef.config.find(
+							...serverDef.schemas.find(
 								(c) => c.command === input.config.command,
 							)!.args!,
 						]

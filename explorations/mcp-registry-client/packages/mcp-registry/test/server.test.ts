@@ -36,7 +36,7 @@ describe("ServerDefinition", () => {
 		it("should validate command exists in config", () => {
 			const server = new ServerDefinition({
 				...minimalServer,
-				config: [
+				schemas: [
 					{
 						command: "test-cmd",
 						args: ["--test"],
@@ -59,7 +59,7 @@ describe("ServerDefinition", () => {
 		it("should validate required env vars", () => {
 			const server = new ServerDefinition({
 				...minimalServer,
-				config: [
+				schemas: [
 					{
 						command: "test-cmd",
 						env: {
@@ -88,7 +88,7 @@ describe("ServerDefinition", () => {
 		it("should validate runtime args multiplicity", () => {
 			const server = new ServerDefinition({
 				...minimalServer,
-				config: [
+				schemas: [
 					{
 						command: "test-cmd",
 						runtimeArgs: {
@@ -123,7 +123,7 @@ describe("ServerDefinition", () => {
 		it("should serialize and deserialize server definition", () => {
 			const original = new ServerDefinition({
 				...minimalServer,
-				config: [
+				schemas: [
 					{
 						command: "test-cmd",
 						args: ["--test"],

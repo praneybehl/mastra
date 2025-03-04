@@ -13,7 +13,7 @@ import { McpConfiguration } from "@mastra/mcp-configuration"
 
 // Create registry client
 const registry = new RegistryClient({
-	url: "https://opentools.com/.well-known/mcp",
+	url: "https://opentools.com/.well-known/mcp.json",
 })
 
 // Create configuration manager

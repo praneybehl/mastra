@@ -6,7 +6,7 @@ export interface Publisher {
 	readonly url?: string
 }
 
-export interface RuntimeConfig {
+export interface ConfigSchema {
 	readonly command: string
 	readonly args?: readonly string[]
 	readonly env?: Readonly<
@@ -56,7 +56,7 @@ export type ServerData = {
 	readonly distribution?: Distribution
 	readonly license?: string
 	readonly runtime?: string
-	readonly config?: readonly RuntimeConfig[]
+	readonly schemas?: readonly ConfigSchema[]
 	readonly downloads?: number
 	readonly createdAt?: string
 	readonly updatedAt?: string
@@ -142,7 +142,7 @@ export class ServerDefinition implements ServerData {
 		runtimeArgs?: string[]
 	}) {
 		// Find the matching runtime config for the command
-		const runtimeConfig = this.config?.find(
+		const runtimeConfig = this.schemas?.find(
 			(rc) => rc.command === config.command,
 		)
 		if (!runtimeConfig) {

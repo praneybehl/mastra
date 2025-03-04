@@ -16,7 +16,7 @@ vi.mock("fs/promises", () => ({
 
 describe("McpConfiguration", () => {
 	const registry = new RegistryClient({
-		url: "https://opentools.com/.well-known/mcp",
+		url: "https://opentools.com/.well-known/mcp.json",
 	})
 
 	let config: McpConfiguration

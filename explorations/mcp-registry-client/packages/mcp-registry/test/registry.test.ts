@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import { RegistryClient, RegistryClientOptions } from "../src/registry.js"
+import { RegistryClient } from "../src/registry.js"
 import { MOCK_REGISTRIES } from "../src/mock-servers.js"
 
 describe("RegistryClient", () => {
 	let registry: RegistryClient
-	const mockUrl = "https://opentools.com/.well-known/mcp"
+	const mockUrl = "https://opentools.com/.well-known/mcp.json"
 
 	beforeEach(() => {
 		registry = new RegistryClient({
