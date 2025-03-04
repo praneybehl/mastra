@@ -46,10 +46,9 @@ const ShowcaseCard = ({
 
 export const ShowcaseGrid = () => {
   const showcaseItems: ShowcaseCardProps[] = [
-    {
+     {
       title: "NotebookLM-Mastra",
-      description:
-        "NotebookLM is an AI-powered assistant that creates podcasts from the sources you upload",
+      description: "NotebookLM is an AI-powered assistant that creates podcasts from the sources you upload",
       image: "/showcase/notebook-lm.png",
       link: "https://notebooklm-mastra.vercel.app/",
     },
