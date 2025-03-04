@@ -288,86 +288,99 @@ export function isVercelTool(tool: any): tool is VercelTool {
   );
 }
 
-export function convertToolToCore(
-  tool: ToolAction<any, any, any, any> | VercelTool,
-  options: {
-    name: string;
-    runId?: string;
-    threadId?: string;
-    resourceId?: string;
-    mastra?: MastraPrimitives;
-    logger: Logger;
-    memory?: MastraMemory;
-  },
+type ToolExecuteFn = (args: any, options?: any) => Promise<any>;
+
+interface BaseToolOptions {
+  name: string;
+  runId?: string;
+  threadId?: string;
+  resourceId?: string;
+  logger: Logger;
+  description?: string;
+}
+
+interface MastraToolOptions extends BaseToolOptions {
+  mastra?: MastraPrimitives;
+  memory?: MastraMemory;
+}
+
+interface LogMessageOptions {
+  start: string;
+  error: string;
+}
+
+export function wrapToolExecution(
+  execFunction: ToolExecuteFn,
+  options: BaseToolOptions,
+  logMessageOptions?: LogMessageOptions,
+) {
+  const { name, logger } = options;
+  const { start, error } = logMessageOptions || {
+    start: `Executing tool ${name}`,
+    error: `Failed tool execution`,
+  };
+
+  return async (args: any, execOptions?: any) => {
+    try {
+      logger.debug(start, options);
+      return await execFunction(args, execOptions);
+    } catch (err) {
+      logger.error(error, { ...options, error: err });
+      throw err;
+    }
+  };
+}
+
+export function makeVercelTool(
+  tool: VercelTool,
+  options: BaseToolOptions,
+  logMessageOptions?: LogMessageOptions,
 ): CoreTool {
-  const { name, runId, threadId, resourceId, mastra, logger, memory } = options;
+  return {
+    description: tool.function.description,
+    parameters: resolveSerializedZodOutput(jsonSchemaToZod(tool.function.parameters)),
+    execute: tool.exec
+      ? wrapToolExecution(
+          tool.exec,
+          {
+            ...options,
+            name: tool.function.name,
+            description: tool.function.description,
+          },
+          logMessageOptions,
+        )
+      : undefined,
+  };
+}
 
-  if (isVercelTool(tool)) {
-    return {
-      description: tool.function.description,
-      parameters: resolveSerializedZodOutput(jsonSchemaToZod(tool.function.parameters)),
-      execute: tool.exec
-        ? async args => {
-            try {
-              logger.debug(`Executing Vercel tool ${tool.function.name}`, {
-                name: tool.function.name,
-                description: tool.function.description,
-                args,
-                runId,
-                threadId,
-                resourceId,
-              });
-              return await tool.exec!(args);
-            } catch (err) {
-              logger.error(`Failed Vercel tool execution`, {
-                error: err,
-                runId,
-                threadId,
-                resourceId,
-              });
-              throw err;
-            }
-          }
-        : undefined,
-    };
-  }
-
+export function makeMastraTool(
+  tool: ToolAction<any, any, any, any>,
+  options: MastraToolOptions,
+  logMessageOptions?: LogMessageOptions,
+): CoreTool {
   return {
     description: tool.description!,
     parameters: tool.inputSchema,
-    execute:
-      typeof tool?.execute === 'function'
-        ? async (args, options) => {
-            try {
-              logger.debug('Executing tool', {
-                tool: name,
-                args,
-              });
-              return (
-                tool?.execute?.(
-                  {
-                    context: args,
-                    threadId,
-                    resourceId,
-                    mastra,
-                    memory,
-                    runId,
-                  },
-                  options,
-                ) ?? undefined
-              );
-            } catch (error) {
-              logger.error('Error executing tool', {
-                tool: name,
-                args,
-                error,
-                runId,
-                threadId,
-                resourceId,
-              });
-              throw error;
-            }
-          }
-        : undefined,
+    execute: tool.execute
+      ? wrapToolExecution(
+          async (args: any, execOptions: any) =>
+            tool?.execute?.(
+              {
+                context: args,
+                threadId: options.threadId,
+                resourceId: options.resourceId,
+                mastra: options.mastra,
+                memory: options.memory,
+                runId: options.runId,
+              },
+              execOptions,
+            ),
+          {
+            ...options,
+            description: tool.description,
+          },
+          logMessageOptions,
+        )
+      : undefined,
   };
 }

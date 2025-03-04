@@ -17,7 +17,7 @@ import type { MastraPrimitives } from '../../action';
 import type { ToolsInput } from '../../agent/types';
 import type { MastraMemory } from '../../memory/memory';
 import type { CoreTool } from '../../tools';
-import { convertToolToCore, delay } from '../../utils';
+import { delay, isVercelTool, makeMastraTool, makeVercelTool } from '../../utils';
 
 import { MastraLLMBase } from './base';
 
@@ -82,15 +82,18 @@ export class MastraLLM extends MastraLLMBase {
         const tool = value[1];
 
         if (tool) {
-          memo[k] = convertToolToCore(tool, {
+          const toolOptions = {
             name: k,
             runId,
             threadId,
             resourceId,
-            mastra: this.#mastra,
             logger: this.logger,
-            memory,
-          });
+          };
+          if (isVercelTool(tool)) {
+            memo[k] = makeVercelTool(tool, toolOptions);
+          } else {
+            memo[k] = makeMastraTool(tool, toolOptions);
+          }
         }
         return memo;
       },
