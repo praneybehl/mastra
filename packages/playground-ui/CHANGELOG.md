@@ -1,5 +1,14 @@
 # @mastra/playground-ui
 
+## 1.0.0-alpha.4
+
+### Patch Changes
+
+- d79aedf: Fix import/require paths in these package.json
+- Updated dependencies [d79aedf]
+  - @mastra/core@0.5.0-alpha.4
+  - @mastra/client-js@0.1.7-alpha.4
+
 ## 1.0.0-alpha.3
 
 ### Patch Changes
