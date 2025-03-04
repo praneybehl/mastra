@@ -220,6 +220,16 @@ export class Workflow<
     };
     this.#steps[checkStepKey] = checkStep;
 
+    // Loop finished step
+    const loopFinishedStepKey = `__${fallbackStepKey}_loop_finished`;
+    const loopFinishedStep = {
+      id: loopFinishedStepKey,
+      execute: async ({ context }: any) => {
+        return { success: true };
+      },
+    };
+    this.#steps[checkStepKey] = checkStep;
+
     // First add the check step after the last step
     this.then(checkStep);
 
@@ -236,7 +246,18 @@ export class Workflow<
           return status === 'continue' ? WhenConditionReturnValue.CONTINUE : WhenConditionReturnValue.CONTINUE_FAILED;
         },
       })
-      .then(checkStep);
+      .then(checkStep)
+      .step(loopFinishedStep, {
+        when: async ({ context }) => {
+          const checkStepResult = context.steps?.[checkStepKey];
+          if (checkStepResult?.status !== 'success') {
+            return WhenConditionReturnValue.CONTINUE_FAILED;
+          }
+
+          const status = checkStepResult?.output?.status;
+          return status === 'complete' ? WhenConditionReturnValue.CONTINUE : WhenConditionReturnValue.CONTINUE_FAILED;
+        },
+      });
 
     return this;
   }
